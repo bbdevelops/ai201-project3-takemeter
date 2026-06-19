@@ -1,0 +1,20 @@
+# Credentials
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Intermediate data files (not final deliverables)
+
+data/raw_posts.csv
+data/prelabeled_posts.csv
+data/reddit_data_final.csv
+data/prelabeled_posts_for_gemini.csv
+
+json/
+results/
+
+# OS files
+.DS_Store
+Thumbs.db

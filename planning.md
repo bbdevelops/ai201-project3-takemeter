@@ -65,6 +65,13 @@ r/csMajors has many emotionally-charged posts where the line between "I need hel
 - **Rhetorical questions don't count.** Questions like "is this even worth it?" or "are we all cooked?" are emotional expressions, not genuine requests for guidance. These stay as **venting**.
 - **Practical test:** Could a commenter give a useful, specific answer to the question asked? If yes → advice-seeking. If the only honest response is empathy or "hang in there" → venting.
 
+*Example:*
+```
+What's the deal with handshake Ai?
+
+Every reddit thread for this site just screams astro turfing. Hundreds of ppl begging for referral codes and not a single OP that can go into detail about what the work is beyond AI training and how amazing and reliable the work is as a side hustle. How are there freshmen claiming to have landed  $100/hr cs related projects without any real qualifications? - venting
+```
+
 ### Secondary boundary: advice-seeking ↔ experience-sharing
 
 Many posts tell a story AND ask a question.
@@ -74,6 +81,14 @@ Many posts tell a story AND ask a question.
 - If the question is the main driver and the personal details are context, label it **advice-seeking**.
 - *Practical test:* Could you remove the question and the post still makes sense as a complete story? → experience-sharing. Could you remove the story and the question still makes sense? → advice-seeking.
 
+*Example:*
+
+```
+Incoming interns in Herndon/northern VA area for Fall 2026?
+
+I am an incoming fall intern at Amazon at their Herndon office. Looking to connect with incoming interns in the area and also looking for roommates."- advice-seeking
+```
+
 ### Tertiary boundary: showcasing ↔ advice-seeking
 
 Project posts that ask for feedback or resume advice.
@@ -82,18 +97,45 @@ Project posts that ask for feedback or resume advice.
 - If the post primarily *presents* a project/resource and the question is secondary ("thoughts?", "feedback?"), label it **showcasing**.
 - If the project is just context for a genuine question ("how do I deploy this?", "is this portfolio-worthy?"), label it **advice-seeking**.
 
+*Example:*
+```
+Hey everyone! I'm building a tool to make job searching less painful (think: daily streaks, gamification, actually useful features). But here's the thing, I'm still figuring out what to build first.
+
+I'm torn between focusing on:
+
+    - Resume stuff (instant tailoring, keyword matching, bullet point optimization)
+    - Interview prep (behavioral questions, STAR method practice, mock scenarios)
+    - Application tracking (remembering where you applied, follow-up reminders, organizing the chaos)
+
+Or maybe I'm thinking about this all wrong and there's a bigger pain point I'm missing? If a tool could only do ONE thing really well, what would make you use it every single day?
+
+Help me figure out where to start:
+
+    - What part of job searching makes you want to give up? What takes the most time or mental energy?
+    - Do you currently use any job search tools? What do they do well? What makes you want to throw your laptop?
+    - Would gamification (streaks, daily goals, leveling up) actually motivate you for something this serious, or nah?
+
+What's a feature you wish existed but haven't seen anywhere?
+
+Brutally honest feedback wanted. I'd rather spend 6 months building something you'll actually use.
+
+Drop your thoughts below - roast my ideas, suggest better ones. All of it helps. - advice-seeking
+```
+
+
+
 ## Data Collection Plan
 
 ### Sources
-- **~225 standalone posts** from r/csMajors, pulled from Hot, New, and Top (past month) using PRAW (Python Reddit API Wrapper) — approximately 75 from each sort mode to get diverse content
-- **~75 comments** from the [Project Showcase Megathread](https://www.reddit.com/r/csMajors/comments/1mcg0rc/project_showcase_megathread/) for the showcasing label
+- **~200 posts/comments** from r/csMajors, pulled from Hot, New, Top, and the Project Showcase Megathread.
 
-### Scraping approach
-- Use PRAW to programmatically pull posts and megathread comments
-- Total target: **~300 raw examples**, with the goal of retaining **200+ after filtering** out deleted/low-quality/off-topic posts
+### Data extraction approach
+- Manually downloaded JSON formatted versions of the posts/comments.
+- Used Gemini to assemble the raw JSON data into a unified CSV.
+- Total target: **~200 examples** after filtering out deleted/low-quality/off-topic posts.
 
 ### CSV format
-Columns: `text`, `label`, `source` (post vs. comment), `notes` (for difficult cases)
+Columns: `id`, `text`, `source`, `url`, `label`, `notes`
 
 ### Label distribution targets
 | Label | Target % | Target count (of 200) |
@@ -104,16 +146,16 @@ Columns: `text`, `label`, `source` (post vs. comment), `notes` (for difficult ca
 | showcasing | ~10-15% | 20-30 |
 
 ### Imbalance mitigation
-- If showcasing falls below 20 examples, scrape additional megathread comments or search for standalone project posts
-- If any single label exceeds 70%, redistribute by scraping more from underrepresented sorts/sources
+- If showcasing falls below 20 examples, manually collect additional megathread comments or search for standalone project posts
+- If any single label exceeds 70%, redistribute by collecting more from underrepresented sorts/sources
 - The `source` column tracks whether examples are posts vs. comments — this is a potential confounder since megathread comments (showcasing) tend to be shorter and structurally different from standalone posts
 
 ### Labeling workflow
-1. Scrape ~300 raw examples using PRAW
-2. Pre-label all examples using an LLM (Groq llama-3.3-70b-versatile) with the exact label definitions from this document
-3. Manually review **every single pre-labeled example**, correcting labels as needed
-4. Track all corrections in the `notes` column for disclosure in the AI Usage section
-5. Document at least 3 genuinely difficult labeling decisions
+1. Manually download raw examples in JSON format and use Gemini to assemble them into a CSV.
+2. Pre-label all examples using LLMs (Groq and Gemini 3.1 Pro) with the exact label definitions from this document.
+3. Manually review **every single pre-labeled example**, correcting labels as needed.
+4. Track all corrections in the `notes` column for disclosure in the AI Usage section.
+5. Document at least 3 genuinely difficult labeling decisions.
 
 ## Evaluation Metrics
 
@@ -139,10 +181,10 @@ These thresholds are realistic for a subjective 4-class intent classification ta
 ## AI Tool Plan
 
 ### Label stress-testing
-Before annotating 200 examples, I will provide the LLM (Groq) my label definitions and edge case rules, and ask it to generate 5-10 posts that sit at the boundary between two labels (especially advice-seeking ↔ venting). If I can't classify these cleanly using my definitions, I'll tighten the definitions before committing to annotation.
+Before annotating 200 examples, I will provide the LLMs (Groq and Gemini 3.1 Pro) my label definitions and edge case rules, and ask them to generate 5-10 posts that sit at the boundary between two labels (especially advice-seeking ↔ venting). If I can't classify these cleanly using my definitions, I'll tighten the definitions before committing to annotation.
 
 ### Annotation assistance
-I will use Groq's llama-3.3-70b-versatile to pre-label all scraped examples by providing my exact label definitions and asking it to assign one label per post. I will then manually review and correct every pre-assigned label. I will track which examples I overrode in the `notes` column and disclose this workflow in the AI Usage section of the README.
+I will use Groq's llama-3.3-70b-versatile and Gemini 3.1 Pro to pre-label all collected examples by providing my exact label definitions and asking them to assign one label per post. I will then manually review and correct every pre-assigned label. I will track which examples I overrode in the `notes` column and disclose this workflow in the AI Usage section of the README.
 
 ### Failure analysis
 After evaluation, I will paste my misclassified examples into an LLM and ask it to identify patterns — common post length, sarcasm, specific label pairs, etc. I will verify those patterns by re-reading the examples myself and include findings in the evaluation report.
