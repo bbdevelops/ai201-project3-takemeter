@@ -48,7 +48,7 @@ During annotation, distinguishing **advice-seeking** from **venting** proved to 
 ## Fine-Tuning Pipeline
 The model is fine-tuned from **`distilbert-base-uncased`**, executed in a **Google Colab T4 GPU** environment using the `transformers` library. 
 - **Hyperparameter Decisions:** 
-  - `num_train_epochs = 3`: A cautious default to prevent overfitting on our small 200-example dataset.
+  - `num_train_epochs = 10`: Increased to 10 epochs to observe how the model handles the imbalanced dataset over a longer training period.
   - `learning_rate = 2e-5`: The standard stable starting point for fine-tuning BERT-family models.
   - `per_device_train_batch_size = 16`: Chosen to fit comfortably within the T4 GPU memory limits without causing OOM errors.
 
@@ -59,86 +59,83 @@ For the zero-shot baseline, we prompted Groq's `llama-3.3-70b-versatile`. We use
 
 ## Baseline Results (Zero-Shot)
 
-🎯 Baseline accuracy: 0.944  (evaluated on 36/36 parseable responses)
+🎯 Baseline accuracy: 0.971  (evaluated on 35/35 parseable responses)
 
 Per-class metrics (baseline):
 |label    | precision |  recall | f1-score | support |
 |-------- |---------- | ------- | -------- | ------- |
-| advice-seeking     |      0.91 |      1.00|      0.95|        21|
+| advice-seeking     |      1.00 |      1.00|      1.00|        20|
 | experience-sharing |      1.00 |      0.75|      0.86|         4|
-| venting            |      1.00 |      0.67|      0.80|         3|
+| venting            |      0.75 |      1.00|      0.86|         3|
 | showcasing         |      1.00 |      1.00|      1.00|         8|
 |
-| accuracy           |           |          |      0.94|        36|
-| macro avg          |       0.98|      0.85|      0.90|        36|
-| weighted avg       |       0.95|      0.94|      0.94|        36|
+| accuracy           |           |          |      0.97|        35|
+| macro avg          |       0.94|      0.94|      0.93|        35|
+| weighted avg       |       0.98|      0.97|      0.97|        35|
 
 ### Hypothesis: 
-The zero-shot baseline struggled to distinguish between genuine requests for help and rhetorical questions. It consistently misclassified venting and experience-sharing posts as advice-seeking if they contained any question-like phrasing. I expect the fine-tuned model will learn to better recognize the primary intent of the post, which will improve the recall scores for the non-advice categories.
+The zero-shot baseline struggled slightly to distinguish between genuine requests for help and rhetorical questions. It occasionally misclassified venting and experience-sharing posts as advice-seeking if they contained any question-like phrasing. I expect the fine-tuned model will learn to better recognize the primary intent of the post, which will improve the recall scores for the non-advice categories.
 
 ---
 
-## Fine Tuned Results
+## Fine Tuned Results (10 Epochs)
 
-🎯 Fine-tuned model accuracy: 0.583
+🎯 Fine-tuned model accuracy: 0.686
 
 Per-class metrics (fine-tuned model):
 | label   |precision  | recall  | f1-score | support |
 |-------- |---------- | ------- | -------- | ------- |
-|    advice-seeking |      0.58 |     1.00 |     0.74 |       21|
+|    advice-seeking |      0.66 |     0.95 |     0.78 |       20|
 |experience-sharing |      0.00 |     0.00 |     0.00 |        4|
 |           venting |      0.00 |     0.00 |     0.00 |        3|
-|        showcasing |      0.00 |     0.00 |     0.00 |        8|
+|        showcasing |      0.83 |     0.62 |     0.71 |        8|
 |
-|          accuracy |       |              |     0.58 |       36|
-|         macro avg |      0.15 |     0.25 |     0.18 |       36|
-|      weighted avg |      0.34 |     0.58 |     0.43 |       36|
+|          accuracy |       |              |     0.69 |       35|
+|         macro avg |      0.37 |     0.39 |     0.37 |       35|
+|      weighted avg |      0.57 |     0.68 |     0.61 |       35|
 
 ### Confusion Matrix
 Fine-Tuned Model - Confusion Matrix (Test Set)
 
 | | **advice-seeking** | **experience-sharing** | **venting** | **showcasing** |
 |-----------|----------------|--------------------|---------|------------|
-| **advice-seeking** | 21 | 0 | 0 | 0 |
+| **advice-seeking** | 19 | 0 | 0 | 1 |
 | **experience-sharing** | 4 | 0 | 0 | 0 |
 | **venting** | 3 | 0 | 0 | 0 |
-| **showcasing** | 8 | 0 | 0 | 0 |
+| **showcasing** | 3 | 0 | 0 | 5 |
  
  (Predicted label are in the columns, true labels are in the rows)
 <br />
 
-
 ### Error Analysis (3 Wrong Predictions)
-Since the fine-tuned model collapsed and predicted `advice-seeking` for the entire test set, examining these failures illustrates exactly why the semantic features of minority classes were ignored:
+Since the fine-tuned model partially collapsed, examining these failures illustrates exactly why the semantic features of minority classes were ignored despite 10 epochs of training:
 
-1. **Post 14 (True: `venting` | Predicted: `advice-seeking` | Confidence: 0.30)**
-   - *Text Excerpt:* "How do you guys find meaning in all of this? By 'all of this', I mean the internships, the companies, the C++, the Neovim..."
-   - *Analysis:* This post relies on a heavy rhetorical question. Because questions are the defining syntactic feature of `advice-seeking` (which was overrepresented in training), the model learned that question marks = advice. It failed to learn the semantic boundary of an "actionable request".
-2. **Post 5 (True: `experience-sharing` | Predicted: `advice-seeking` | Confidence: 0.30)**
-   - *Text Excerpt:* "Applied to Claude Corps, already got my rejection. I applied on day 1 bro, DAY 1. They announced it in the morning..."
-   - *Analysis:* This is a pure narrative of an experience. However, the poster ended the story with *"Anyone else hear back?"*. The model completely ignored the narrative structure and likely triggered on the minor question at the end, defaulting back to its `advice-seeking` bias.
-3. **Post 12 (True: `showcasing` | Predicted: `advice-seeking` | Confidence: 0.29)**
-   - *Text Excerpt:* "# Got annoyed with manually copy-pasting LeetCode to Gemini, so I made a tiny extension to do it in one click... Github Repo - [Link]"
-   - *Analysis:* The post describes a problem ("Got annoyed with manually copy-pasting") and then presents a solution. `advice-seeking` posts also frequently describe problems. Without enough `showcasing` examples to learn that "Github Repo" and "extension" are strong inverse signals, the model fell back to predicting the majority class based on the problem-description terminology.
+1. **Post 4 (True: `experience-sharing` | Predicted: `advice-seeking` | Confidence: 0.72)**
+   - *Text Excerpt:* "This post is for those who are thinking of switching to CS, early on in their college career... Here's my story..."
+   - *Analysis:* The model completely misses the narrative structure of an experience-sharing post. Instead, it forces it into the majority class, doing so with an alarmingly high confidence of 72%.
+2. **Post 10 (True: `venting` | Predicted: `advice-seeking` | Confidence: 0.67)**
+   - *Text Excerpt:* "i regret choosing business informatics instead of computer science... im a high school student from europe..."
+   - *Analysis:* Despite being a clear vent regarding major choices, the model misclassifies it as advice-seeking with 67% confidence, ignoring the frustrated semantics in favor of its `advice-seeking` bias.
+3. **Post 11 (True: `showcasing` | Predicted: `advice-seeking` | Confidence: 0.41)**
+   - *Text Excerpt:* "A bunch of people in my dorm are super into Wordle... so I started building a puzzle game..."
+   - *Analysis:* While the model successfully learned to predict showcasing in some cases, it still confuses project context with advice. Here, it defaults to the majority class but with significantly lower confidence (41%) than the venting/experience errors.
 
 ### Sample Classifications Table
 
 | Post Excerpt | True Label | Predicted Label | Confidence | Reason |
 |--------------|------------|-----------------|------------|--------|
-| *"Cloud Software Intern, GeForce NOW - Fall 2026. Hey! Just got an interview position for this role. Anyone have ideas of what to expect?"* | `advice-seeking` | `advice-seeking` | 0.45 | **Correct Prediction:** The model correctly identified the explicit call for help and questions regarding interview expectations, aligning perfectly with the majority class feature set it learned. |
-| *"How do you guys find meaning in all of this? By 'all of this', I mean the internships, the companies..."* | `venting` | `advice-seeking` | 0.30 | **Incorrect:** Rhetorical question triggered the model's question-mark = advice bias. |
-| *"Applied to Claude Corps, already got my rejection. I applied on day 1 bro, DAY 1..."* | `experience-sharing` | `advice-seeking` | 0.30 | **Incorrect:** The narrative was overshadowed by a minor question ("Anyone else hear back?") at the end. |
-| *"Got annoyed with manually copy-pasting LeetCode to Gemini, so I made a tiny extension to do it in one click..."* | `showcasing` | `advice-seeking` | 0.29 | **Incorrect:** Problem-description terminology confused the model, and it lacked enough showcasing data to recognize the Github Repo link as a unique feature. |
+| *"Hey guys, I am building an app that allows students and young professionals to connect with research opportunities..."* | `showcasing` | `showcasing` | 0.82 | **Correct Prediction:** The model correctly identified the clear project-presentation language ("building an app"), aligning with the secondary feature set it learned. |
+| *"This post is for those who are thinking of switching to CS... Here's my story..."* | `experience-sharing` | `advice-seeking` | 0.72 | **Incorrect:** The model completely failed to recognize narrative structure, instead overconfidently predicting its dominant class. |
+| *"i regret choosing business informatics instead of computer science..."* | `venting` | `advice-seeking` | 0.67 | **Incorrect:** The model ignored the venting sentiment, forcing it into `advice-seeking` with high certainty. |
+| *"A bunch of people in my dorm are super into Wordle... so I started building a puzzle game..."* | `showcasing` | `advice-seeking` | 0.41 | **Incorrect:** Problem-description terminology confused the model's boundary for `showcasing`. |
 
-**Confidence Calibration Note:**
+**Confidence Calibration Note (Overconfidence in Errors):**
 
- While the model suffered from collapse and predicted the same class for every post, its confidence scores remained meaningful. When the model made an incorrect prediction (defaulting to advice-seeking for a venting or showcasing post), it did so with very low confidence (~29-30%). However, when it correctly identified an actual advice-seeking post, its confidence spiked significantly higher to 45%. This indicates that while the loss function forced it to guess the majority class, the model was mathematically "aware" when it was looking at features that didn't perfectly align with that class.
-
-
+The move from 3 to 10 epochs revealed a critical flaw in confidence calibration. At 3 epochs, the model was mathematically unsure (~27%) when it made mistakes on minority classes. However, at 10 epochs, the model became **overconfident in its errors**. When it wrongly predicts `venting` or `experience-sharing` as `advice-seeking`, it frequently outputs confidences between 60% and 72%. This demonstrates that over-training on an imbalanced dataset doesn't just fail to learn minority classes—it actively trains the model to be incorrectly certain that everything belongs to the majority class.
 
 ### Reflection on Model Collapse (Error Pattern Analysis)
 
-While I intended for the model to learn the semantic differences between the four classes, the evaluation revealed a complete model collapse. The fine-tuned DistilBERT model achieved an accuracy of 58.33%, compared to the zero-shot baseline of 94.44%. Looking at the confusion matrix, the fine-tuned model predicted advice-seeking for all 36 test examples. Because the training data was imbalanced (with advice-seeking making up 56.5% of the dataset), the relatively small DistilBERT model optimized its loss function by defaulting to the majority class. Unlike the 70B parameter baseline model—which could rely on a detailed instructional prompt and massive pre-training—the fine-tuned model did not have enough minority class examples (only 23 each for venting and experience-sharing) to learn their distinct semantic features.
+While I intended for the model to learn the semantic differences between the four classes, increasing the training to 10 epochs revealed a stubborn, binary model collapse. The fine-tuned DistilBERT model achieved an accuracy of 68.57%, compared to the zero-shot baseline of 97.1%. Looking at the confusion matrix, the fine-tuned model predicted *only* `advice-seeking` and `showcasing` for all 35 test examples. Because the training data was imbalanced (with `advice-seeking` making up 56.5% of the dataset), the model learned the primary class heavily. It also managed to separate the most distinct minority class (`showcasing`). However, the extra epochs completely failed to help it learn `venting` and `experience-sharing` (0 recall for both). Instead, the extended training just caused the model to aggressively overfit its bias toward `advice-seeking`.
 
 ## AI Usage
 1. **Data Formatting & Extraction:** I used Gemini to parse the raw, massive JSON files downloaded from Reddit and format them into a clean, unified CSV structure so they could be easily manipulated and fed into the annotation pipeline. I had to prompt the AI to handle missing fields and standardize the source URLs.
@@ -147,3 +144,24 @@ While I intended for the model to learn the semantic differences between the fou
 ## Spec Reflection
 - **How the spec helped:** The requirement to explicitly define decision rules for "Hard Edge Cases" was crucial. It forced me to establish a rigorous boundary between `venting` and `advice-seeking` (e.g., distinguishing actionable requests from rhetorical complaints) before annotating, which prevented inconsistent labels.
 - **How implementation diverged:** The spec suggested manually copy-pasting posts into a spreadsheet for data collection. I diverged from this by downloading raw JSON representations of the Reddit pages and using Gemini to extract the text and URLs into a CSV. This allowed me to collect data much faster, though it required an extra step of data-cleaning to handle formatting quirks.
+
+## Deployed Interface (Stretch Feature)
+This project includes a deployed web interface built with Gradio. The interface allows you to paste a Reddit post, run it through the fine-tuned DistilBERT model, and view the predicted label and confidence scores. It also includes the example posts analyzed in this report for quick testing.
+
+### How to Run Locally
+1. **Set your Model ID:** In `app.py`, change the `MODEL_ID` variable to match your uploaded Hugging Face model repository (e.g. `your-username/takemeter-model`). The script will automatically download the weights from Hugging Face on the first run. (Alternatively, if you are developing locally, you can place your Colab `takemeter-model` folder in the root directory and the app will prioritize loading from it).
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **Run the interface:**
+   ```bash
+   python app.py
+   ```
+4. **Access the web app:** Open the provided local URL (typically `http://127.0.0.1:7860/`) in your browser to interact with the classifier.
+
+## Future Work & Next Steps
+To resolve the partial model collapse observed in this iteration, future training runs will need to address the severe class imbalance (where `advice-seeking` constituted over 56% of the training data). Next steps would include:
+1. **Implementing Class Weights:** Modifying the loss function to heavily penalize the model for misclassifying the minority classes (`venting` and `experience-sharing`).
+2. **Data Augmentation:** Using an LLM to generate synthetic variants of the minority class posts to balance the training distribution without requiring further manual annotation. 
+3. **Hyperparameter Tuning:** Once the dataset is balanced, experimenting with lower learning rates and alternate batch sizes to help the model learn the more nuanced semantic boundaries between venting and asking for advice.

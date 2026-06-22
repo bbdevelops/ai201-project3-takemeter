@@ -13,8 +13,10 @@ data/reddit_data_final.csv
 data/prelabeled_posts_for_gemini.csv
 
 json/
-results/brian_brown_ai201_project3_takemeter_starter_clean.py
+results/results1
+results/results2
 
+takemeter-model/
 # OS files
 .DS_Store
 Thumbs.db

@@ -1,10 +1,10 @@
-﻿Baseline accuracy: 0.944  (evaluated on 36/36 parseable responses),,,,,,
-,precision   , recall  ,f1-score ,  support,,
-advice-seeking ,0.91,1,0.95,21,,
-experience-sharing,1,0.75,0.86,4,,
-venting,1,0.67,0.8,3,,
-showcasing,1,1,1,8,,
-,,,,,,
-accuracy,,,0.94,36,,
-macro avg      ,0.98,0.85,0.9,36,,
-weighted avg     ,0.95,0.94,0.94,36,,
+﻿🎯 Baseline accuracy: 0.971  (evaluated on 35/35 parseable responses),,,,
+,precision   , recall  ,f1-score ,  support
+advice-seeking ,1,1,1,20
+experience-sharing,1,0.75,0.86,4
+venting,0.75,1,0.86,3
+showcasing,1,1,1,8
+,,,,
+accuracy,,,0.97,35
+macro avg      ,0.94,0.94,0.93,35
+weighted avg     ,0.98,0.97,0.97,35

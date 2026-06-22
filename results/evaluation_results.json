@@ -1,8 +1,8 @@
 {
-  "baseline_accuracy": 0.9444,
-  "finetuned_accuracy": 0.5833,
-  "improvement": -0.3611,
-  "test_set_size": 36,
+  "baseline_accuracy": 0.9714,
+  "finetuned_accuracy": 0.6857,
+  "improvement": -0.2857,
+  "test_set_size": 35,
   "label_map": {
     "advice-seeking": 0,
     "experience-sharing": 1,
