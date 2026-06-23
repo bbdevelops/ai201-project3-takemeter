@@ -2,6 +2,9 @@
 
 A fine-tuned text classifier that categorizes discourse in [r/csMajors](https://www.reddit.com/r/csMajors/) by **post intent** — distinguishing advice-seeking, experience-sharing, venting, and project showcasing. Built on DistilBERT and evaluated against a zero-shot LLM baseline to measure what fine-tuning on 200 hand-labeled examples actually captures.
 
+## Demo Video
+https://vimeo.com/1203688906
+
 ## Community Choice
 **Community:** `r/csMajors` (Reddit) — a subreddit of ~447,000 computer science students who actively discuss internship searches, interview preparation, career anxiety, and personal projects.
 
